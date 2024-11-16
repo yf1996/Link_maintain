@@ -36,6 +36,7 @@ module SimpleNode extends INode
         double beaconDuration @unit(s) = default(0.1s);
         double commRange @unit(m) = default(200m);
         double sendInterval @unit(s) = default(2s);
+        int linkStateThreshold = default(2);
     
         double listenningPower @unit(W) = default(0.1W);
         double receivingPower @unit(W) = default(0.05W);

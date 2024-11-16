@@ -47,7 +47,7 @@ void SimpleNode::initialize(int stage)
 
         txQueue = new cQueue("send pkt queue");
 
-        linkStateThreshold = 2;
+        linkStateThreshold = par("linkStateThreshold");
 
         beamwidth = 360 / numSectors;
 
