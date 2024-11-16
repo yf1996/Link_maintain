@@ -1,0 +1,4 @@
+#!/bin/sh
+cd `dirname $0`
+../src/link_maintain -n .:../src $*
+# for shared lib, use: opp_run -l ../src/link_maintain -n .:../src $*
