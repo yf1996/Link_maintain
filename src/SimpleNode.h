@@ -30,6 +30,7 @@ using namespace omnetpp;
 using SecId = int;
 using W = double;
 using J = double;
+using mAh = double;
 using CountDown = int;
 
 using LinkState = std::map<cModule *, CountDown>;
@@ -67,8 +68,12 @@ private:
     W listenningPower = W(NaN);   ///< Power consumption while listening
     W receivingPower = W(NaN);    ///< Power consumption while receiving
     W transmittingPower = W(NaN); ///< Power consumption while transmitting
+    W basePower = W(NaN); ///< Power consumption while transmitting
     W currentPower = W(0.0);      ///< Current power consumption
     J consumption = J(0.0);
+    mAh batteryStorage = mAh(0.0);
+    J batteryStorage_joule = J(0.0);
+    double nominalVoltage = 0;
 
     CountDown linkStateThreshold; // minus 1 when send. Reset when received ack.
 
@@ -81,6 +86,7 @@ private:
     LinkState linkState;
 
     cMessage *txTimer = nullptr;
+    cMessage *powerMonitorTimer = nullptr;
 
     // Dynamic parameters
     simtime_t sendIntv = SIMTIME_ZERO;  ///< Interval for sending
@@ -90,6 +96,7 @@ private:
 
 public:
     static simsignal_t linkEndSignal;
+    static simsignal_t sendCountSignal;
 
 public:
     /** @brief Get the node ID. */

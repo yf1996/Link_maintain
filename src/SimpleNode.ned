@@ -27,25 +27,32 @@ module SimpleNode extends INode
     	@display("i=device/wifilaptop");
     	@class(SimpleNode);
         @signal[linkEnd](type=simtime_t);
-        // @statistic[CountTest](title="Count Test"; source=countTest; record=timeavg, vector);	
+        
+        @signal[sendCount](type=int);
+        @statistic[SendCount](title="Overhead Count"; source=sendCount; record=count, vector?);	
     
         
         string radioMedium = default("^.radioMedium");
         int numSectors = default(4);
+        double nominalVoltage @unit(V) = default(7.2V); // 2 lithium batteries connected in series
         double slotDuration @unit(s) = default(0.1s);
         double beaconDuration @unit(s) = default(0.1s);
         double commRange @unit(m) = default(200m);
         double sendInterval @unit(s) = default(2s);
         int linkStateThreshold = default(2);
     
-        double listenningPower @unit(W) = default(0.1W);
-        double receivingPower @unit(W) = default(0.05W);
-        double transmittingPower @unit(W) = default(0.02W);
+        double listenningPower @unit(W) = default(0.5W);
+        double receivingPower @unit(W) = default(2W);
+        double transmittingPower @unit(W) = default(3W);
+        double basePower @unit(W) = default(20W);
+        double batteryStorage @unit(mAh) = default(1000mAh);
         
        	
         
     submodules:
         mobility: <default("StationaryMobility")> like IMobility {
            	@display("p=100,100;is=s");
+           	initialX = uniform((constraintAreaMaxX + constraintAreaMinX) / 2 - 1e3m, (constraintAreaMaxX + constraintAreaMinX) / 2 + 1e3m);
+			initialY = uniform((constraintAreaMaxY + constraintAreaMinY) / 2 - 1e3m, (constraintAreaMaxY + constraintAreaMinY) / 2 + 1e3m);
         }
 }

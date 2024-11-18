@@ -22,6 +22,7 @@ using namespace omnetpp;
 Define_Module(SimpleNode);
 
 simsignal_t SimpleNode::linkEndSignal = registerSignal("linkEnd");
+simsignal_t SimpleNode::sendCountSignal = registerSignal("sendCount");
 
 void SimpleNode::initialize(int stage)
 {
@@ -40,10 +41,21 @@ void SimpleNode::initialize(int stage)
         listenningPower = par("listenningPower");
         receivingPower = par("receivingPower");
         transmittingPower = par("transmittingPower");
+        basePower = par("basePower");
+        batteryStorage = par("batteryStorage");
         transInterval = par("sendInterval");
+        nominalVoltage = par("nominalVoltage");
+
+        /**
+         * Energy(J) = Battery Capacity(mAh) / 1000 * Voltage(V) * 3600
+         */
+        batteryStorage_joule = batteryStorage / 1000 * nominalVoltage * 3600;
+        EV_INFO << "batteryStorage_joule = " << batteryStorage_joule << endl;
 
         txTimer = new cMessage("txTimer");
         isDirectionalReceive = false;
+
+        powerMonitorTimer = new cMessage("powerMonitorTimer");
 
         txQueue = new cQueue("send pkt queue");
 
@@ -95,6 +107,8 @@ void SimpleNode::initialize(int stage)
         scheduleAfter(transInterval, txTimer);
         subscribe(inet::IMobility::mobilityStateChangedSignal, this);
         EV_INFO << "subscribe(IMobility::mobilityStateChangedSignal, this)" << endl;
+
+        scheduleAfter(10, powerMonitorTimer); // monitor the power per 10s
     }
     else
     {
@@ -105,6 +119,40 @@ void SimpleNode::initialize(int stage)
 void SimpleNode::handleMessage(cMessage *msg)
 {
     // TODO - Generated method body
+    if (msg == powerMonitorTimer)
+    {
+        scheduleAfter(10, powerMonitorTimer);
+    }
+
+    // cal listenning state energy consuming.
+    simtime_t duration = simTime() - lastRecordTime;
+    currentPower = basePower + listenningPower;
+    consumption += duration.dbl() * currentPower;
+    lastRecordTime = simTime();
+    // EV_INFO << "Consumption is " << consumption << "now." << endl;
+    /* Power off when the battery is exhausted. */
+
+    if (consumption > batteryStorage_joule)
+    {
+        EV_INFO << getFullName() << ": No response. The battery is exhausted." << endl;
+
+        // Do not reply any message
+        if (cPacket *pkt = dynamic_cast<cPacket *>(msg))
+        {
+            delete pkt;
+        }
+
+        // Disconnect all links.
+        for (NbrTable::iterator iter = neighborTable->begin(); iter != neighborTable->end();)
+        {
+            auto dst = check_and_cast<SimpleNode *>(iter->first);
+            iter++;
+            neighborTable->erase(dst);
+            radioMedium->linkLifetimeNotice(simTime());
+        }
+
+        return;
+    }
 
     if (msg->isSelfMessage())
     {
@@ -123,8 +171,9 @@ void SimpleNode::handleMessage(cMessage *msg)
             EV_INFO << "src id is " << recvPkt->getSrc()->getId() << endl;
             EV_INFO << "timestamp is " << recvPkt->getTimestamp() << endl;
 
-            /* cal recv energy consuming */
-            consumption += beaconDuration.dbl() * receivingPower;
+            /* cal energy consuming for receiving a beacon. */
+            currentPower = basePower + receivingPower;
+            consumption += beaconDuration.dbl() * currentPower;
 
             // reply ack
             BeaconAck *pktAck = new BeaconAck("Ack for link maintain beacon");
@@ -133,8 +182,9 @@ void SimpleNode::handleMessage(cMessage *msg)
             pktAck->setTimestamp(simTime());
             sendDirect(pktAck, const_cast<cModule *>(pktSrc)->gate("in"));
 
-            /* cal energy consuming */
-            consumption += beaconDuration.dbl() * transmittingPower;
+            /* cal energy consuming for sending ack. */
+            currentPower = basePower + transmittingPower;
+            consumption += beaconDuration.dbl() * currentPower;
 
             // free
             delete pkt;
@@ -170,12 +220,6 @@ void SimpleNode::handleMessage(cMessage *msg)
     {
         throw cRuntimeError("Message '%s' received on unexpectedly", msg->getName());
     }
-
-    // cal listenning state energy consuming.
-    simtime_t duration = simTime() - lastRecordTime;
-    consumption += duration.dbl() * listenningPower;
-    lastRecordTime = simTime();
-    // EV_INFO << "Consumption is " << consumption << "now." << endl;
 }
 
 void SimpleNode::handleSelfMessage(cMessage *msg)
@@ -201,6 +245,25 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
              iter != (*neighborTable).end();)
         {
             auto dst = check_and_cast<SimpleNode *>(iter->first);
+
+            /* change link state */
+            if (linkState[dst] < 0)
+            {
+                iter++;
+                linkState.erase(dst);
+                (*neighborTable).erase(dst);
+
+                radioMedium->linkLifetimeNotice(simTime());
+                continue;
+            }
+            else
+            {
+                iter++;
+                linkState[dst]--;
+                // statistic
+                emit(sendCountSignal, 1);
+            }
+
             if (canSendToNode(dst))
             {
                 Beacon *pkt = new Beacon("link maintain beacon");
@@ -214,40 +277,23 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
                 EV_INFO << "cant send to node " << dst->getFullName() << endl;
             }
 
-            /* cal energy consuming */
-            consumption += beaconDuration.dbl() * transmittingPower;
-
-            /* change link state */
-            if (linkState[dst] < 0)
-            {
-                iter++;
-                linkState.erase(dst);
-                (*neighborTable).erase(dst);
-
-                radioMedium->linkLifetimeNotice(simTime());
-                // emit(linkEndSignal, simTime());
-            }
-            else
-            {
-                iter++;
-            }
-            linkState[dst]--;
+            /* cal energy consuming for sending a beacon. */
+            currentPower = basePower + transmittingPower;
+            consumption += beaconDuration.dbl() * currentPower;
         }
-    }
 
-    EV_INFO << "Map status after countdown." << endl;
-    EV_INFO << (*neighborTable) << endl;
-    EV_INFO << linkState << endl;
+        EV_INFO << "Map status after countdown." << endl;
+        EV_INFO << (*neighborTable) << endl;
+        EV_INFO << linkState << endl;
 
-    EV_INFO << "Consumption is " << consumption << "now." << endl;
-
-    if ((*neighborTable).empty())
-    {
-        // radioMedium->lostNodeNotice(this);
-    }
-    else
-    {
-        scheduleAfter(transInterval, txTimer);
+        if ((*neighborTable).empty())
+        {
+            // radioMedium->lostNodeNotice(this);
+        }
+        else
+        {
+            scheduleAfter(transInterval, txTimer);
+        }
     }
 }
 
@@ -289,6 +335,7 @@ void SimpleNode::finish()
 {
     EV_INFO << getFullName() << " Finish() " << endl;
     EV_INFO << (*neighborTable) << endl;
+    EV_INFO << "consumption is " << consumption << endl;
 }
 
 std::ostream &operator<<(std::ostream &os, const LinkState &ls)
