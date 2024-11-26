@@ -18,6 +18,8 @@
 
 #include <omnetpp.h>
 
+#include "GaussMobility.h"
+
 #include "RadioMedium.h"
 #include "beacon_ack_m.h"
 #include "beacon_m.h"
@@ -34,6 +36,7 @@ using mAh = double;
 using CountDown = int;
 
 using LinkState = std::map<cModule *, CountDown>;
+using TimeTable = std::multimap<double, cModule *>;
 
 /**
  * TODO - Generated class
@@ -68,7 +71,7 @@ private:
     W listenningPower = W(NaN);   ///< Power consumption while listening
     W receivingPower = W(NaN);    ///< Power consumption while receiving
     W transmittingPower = W(NaN); ///< Power consumption while transmitting
-    W basePower = W(NaN); ///< Power consumption while transmitting
+    W basePower = W(NaN);         ///< Power consumption while transmitting
     W currentPower = W(0.0);      ///< Current power consumption
     J consumption = J(0.0);
     mAh batteryStorage = mAh(0.0);
@@ -82,7 +85,7 @@ private:
     RadioMedium *radioMedium = nullptr;      // Pointer to the radio medium
     bool isDirectionalReceive;
     NbrTable *neighborTable = nullptr;
-    cQueue *txQueue = nullptr;
+    TimeTable txSchedule;
     LinkState linkState;
 
     cMessage *txTimer = nullptr;
@@ -93,6 +96,14 @@ private:
     inet::Coord pos = inet::Coord::NIL; ///< Position of the node
 
     simtime_t lastRecordTime = 0;
+
+    // Mobility
+    inet::GaussMobility *mobility = nullptr;
+
+    // double speedXMean = 0.0;
+    // double speedXStdDev = 0.0;
+    // double speedYMean = 0.0;
+    // double speedYStdDev = 0.0;
 
 public:
     static simsignal_t linkEndSignal;
@@ -128,30 +139,33 @@ public:
     {
         return commRange;
     }
+
     /**  @brief Get the received mode. */
     virtual bool isDirectionalReceived() const
     {
         return isDirectionalReceive;
     }
-    /**
-     * @brief Send a beacon to a specific node.
-     *
-     * @param dst Destination node.
-     * @param delay Delay before sending the beacon.
-     */
-    //    virtual void sendBeaconToNode(cModule *dst, const simtime_t &delay);
 
-protected:
     /** @brief Handle self messages. */
     virtual void handleSelfMessage(cMessage *msg);
-    /** @brief Handle events with the FSM. */
-    // virtual void handleMsgInFsm(cMessage *msg);
-    /** @brief Cast a neighbor discovery beacon. */
-    //    virtual void castBeacon();
 
     bool canSendToNode(SimpleNode *dst);
+
+    /******************* Angle Breakage Probability Prediction Function *******************/
+    double calculate_angle(const std::array<double, 2> &vec1, const std::array<double, 2> &vec2);
+    double getAngleBreakTime(double vx_mean, double vy_mean,
+                             double vx_delta, double vy_delta,
+                             double x0, double y0,
+                             double beamwidth, double dt = 1, int loop = 1000);
+    std::tuple<double, double, double, double> rotateVelocity(
+        double vx_mean, double vy_mean,
+        double vx_sigma, double vy_sigma,
+        double theta);
+
+protected:
 };
 
 std::ostream &operator<<(std::ostream &os, const LinkState &ls);
+std::ostream &operator<<(std::ostream &os, const TimeTable &tt);
 
 #endif

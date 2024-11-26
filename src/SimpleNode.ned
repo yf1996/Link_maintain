@@ -52,7 +52,7 @@ module SimpleNode extends INode
     submodules:
         mobility: <default("StationaryMobility")> like IMobility {
            	@display("p=100,100;is=s");
-           	initialX = uniform((constraintAreaMaxX + constraintAreaMinX) / 2 - 1e3m, (constraintAreaMaxX + constraintAreaMinX) / 2 + 1e3m);
-			initialY = uniform((constraintAreaMaxY + constraintAreaMinY) / 2 - 1e3m, (constraintAreaMaxY + constraintAreaMinY) / 2 + 1e3m);
+           	initialX = uniform((constraintAreaMaxX + constraintAreaMinX) / 2 - 1e2m, (constraintAreaMaxX + constraintAreaMinX) / 2 + 1e2m);
+			initialY = uniform((constraintAreaMaxY + constraintAreaMinY) / 2 - 1e2m, (constraintAreaMaxY + constraintAreaMinY) / 2 + 1e2m);
         }
 }

@@ -33,7 +33,13 @@ PROJECTRELATIVE_PATH = src
 O = $(PROJECT_OUTPUT_DIR)/$(CONFIGNAME)/$(PROJECTRELATIVE_PATH)
 
 # Object files for local .cc, .msg and .sm files
-OBJS = $O/INode.o $O/RadioMedium.o $O/SimpleNode.o $O/beacon_m.o $O/beacon_ack_m.o
+OBJS = \
+    $O/GaussMobility.o \
+    $O/INode.o \
+    $O/RadioMedium.o \
+    $O/SimpleNode.o \
+    $O/beacon_m.o \
+    $O/beacon_ack_m.o
 
 # Message files
 MSGFILES = \
