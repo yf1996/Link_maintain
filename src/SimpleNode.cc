@@ -61,7 +61,7 @@ void SimpleNode::initialize(int stage)
 
         linkStateThreshold = par("linkStateThreshold");
 
-        beamwidth = 360 / numSectors;
+        beamwidth = 2 * M_PI / numSectors;
 
         WATCH(pos);
     }
@@ -206,7 +206,7 @@ void SimpleNode::handleMessage(cMessage *msg)
              * If the prediction method is adopted, there will be some observation errors.
              */
 
-            auto dir = pos - check_and_cast<SimpleNode *>(maintainNode)->getPosition();
+            auto dir = check_and_cast<SimpleNode *>(maintainNode)->getPosition() - pos;
             (*neighborTable)[maintainNode] = dir.normalize();
 
             delete ackPkt;
@@ -318,7 +318,7 @@ void SimpleNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject
 bool SimpleNode::canSendToNode(SimpleNode *dst)
 {
     auto dis_v = dst->getPosition() - pos;
-    auto ang = pos.angle((*neighborTable)[dst]);
+    auto ang = dis_v.angle((*neighborTable)[dst]);
 
     EV_INFO << dst->getFullName() << endl;
     EV_INFO << "normal vector is " << (*neighborTable)[dst] << endl;
