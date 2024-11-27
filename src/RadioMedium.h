@@ -52,6 +52,9 @@ protected:
     double constraintAreaMaxY;
     double constraintAreaMaxZ;
 
+    cMessage *monitorTimer = nullptr;
+    double monitorInterval = 0;
+
 public:
     static const double propagationSpeed;
 

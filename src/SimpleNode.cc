@@ -74,10 +74,6 @@ void SimpleNode::initialize(int stage)
     }
     else if (stage == INITSTAGE_DOWNLOAD)
     {
-        inet::Coord a(-0.383, -0.923);
-        inet::Coord b(-0.785, -0.619);
-        EV_INFO << "angle" << endl;
-        EV_INFO << a.angle(b) << endl;
     }
     else if (stage == 29)
     {
@@ -87,16 +83,6 @@ void SimpleNode::initialize(int stage)
         {
             EV_INFO << "---------Node " << nodeId << " Neighbor Table--------" << endl;
             EV_INFO << (*neighborTable);
-
-            /* Init link state. */
-            for (NbrTable::iterator iter = (*neighborTable).begin();
-                 iter != (*neighborTable).end();
-                 iter++)
-            {
-                linkState[iter->first] = linkStateThreshold;
-            }
-            EV_INFO << linkState << endl;
-            subscribe(linkEndSignal, radioMedium);
 
             /* Init txTimer by prediction */
             for (NbrTable::iterator iter = (*neighborTable).begin();
@@ -136,7 +122,6 @@ void SimpleNode::initialize(int stage)
             cancelEvent(txTimer);
             EV_INFO << "refreshtime: " << refreshtime << endl;
             scheduleAt(refreshtime, txTimer);
-            // scheduleAt(4.81111111111111, txTimer);
         }
     }
     else if (stage == 20)
@@ -189,7 +174,6 @@ void SimpleNode::handleMessage(cMessage *msg)
             auto dst = check_and_cast<SimpleNode *>(iter->first);
             iter++;
             neighborTable->erase(dst);
-            radioMedium->linkLifetimeNotice(simTime());
         }
 
         return;
@@ -240,7 +224,6 @@ void SimpleNode::handleMessage(cMessage *msg)
 
             /* Reset link state when received a ack. */
             auto maintainNode = const_cast<cModule *>(ackPkt->getSrc());
-            linkState[maintainNode] = linkStateThreshold;
 
             /**
              * Refresh the direction vector in the neighbor table.
@@ -304,39 +287,28 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
         auto dst = check_and_cast<SimpleNode *>(txSchedule.begin()->second);
         txSchedule.erase(txSchedule.begin());
 
-        /* change link state */
-        if (linkState[dst] < 0)
-        {
-            linkState.erase(dst);
-            (*neighborTable).erase(dst);
+        /* Still in neighbor table */
+        linkState[dst]--;
+        emit(sendCountSignal, 1);
 
-            radioMedium->linkLifetimeNotice(simTime());
+        /* send */
+        if (canSendToNode(dst))
+        {
+            Beacon *pkt = new Beacon("link maintain beacon");
+            pkt->setSrc(this);
+            pkt->setDst(dst);
+            pkt->setTimestamp(simTime());
+            sendDirect(pkt, dst->gate("in"));
         }
         else
         {
-            /* Still in neighbor table */
-            linkState[dst]--;
-            emit(sendCountSignal, 1);
-
-            /* send */
-            if (canSendToNode(dst))
-            {
-                Beacon *pkt = new Beacon("link maintain beacon");
-                pkt->setSrc(this);
-                pkt->setDst(dst);
-                pkt->setTimestamp(simTime());
-                sendDirect(pkt, dst->gate("in"));
-            }
-            else
-            {
-                EV_INFO << "cant send to node " << dst->getFullName() << endl;
-                txSchedule.insert({simTime().dbl() + 2.0, dst});
-            }
-
-            /* cal energy consuming for sending a beacon. */
-            currentPower = basePower + transmittingPower;
-            consumption += beaconDuration.dbl() * currentPower;
+            EV_INFO << "cant send to node " << dst->getFullName() << endl;
+            txSchedule.insert({simTime().dbl() + 2.0, dst});
         }
+
+        /* cal energy consuming for sending a beacon. */
+        currentPower = basePower + transmittingPower;
+        consumption += beaconDuration.dbl() * currentPower;
 
         if (!txSchedule.empty())
         {

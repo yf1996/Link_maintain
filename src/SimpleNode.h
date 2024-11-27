@@ -134,6 +134,12 @@ public:
         return numSectors;
     }
 
+    /** @brief Get the beamwidth. */
+    virtual double getBeamwidth() const
+    {
+        return beamwidth;
+    }
+
     /**  @brief Get the communication range. */
     virtual double getCommunicationRange() const
     {
