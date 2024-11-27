@@ -26,7 +26,14 @@
 
 using namespace omnetpp;
 using SecId = int;
+
+/**
+ * @brief Including direction information and communication distance information.
+ * Each node has a special communication distance.
+ * The beamwidth should vary with the communication distance. 
+ */
 using OrientVector = inet::Coord;
+ 
 using NodeSet = std::set<cModule *>;
 using NbrTable = std::map<cModule *, OrientVector>;
 using NbrMap = std::map<cModule *, NbrTable>;

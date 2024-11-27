@@ -64,9 +64,11 @@ private:
     // Fixed parameters
     int nodeId = -1;         // Unique ID for the node
     int numSectors = -1;     // Number of sectors for communication
-    double beamwidth = 0;    // unit:degree
+    double beamwidth = 0;    // unit:rad
     double commRange = -1.0; // Communication range of the node
-                             // power comsumption parameters
+    double commRangeIncr = -1.0;
+    int rangeMultipleMax = 0;
+
     double transInterval = -1;
     W listenningPower = W(NaN);   ///< Power consumption while listening
     W receivingPower = W(NaN);    ///< Power consumption while receiving
@@ -167,6 +169,15 @@ public:
         double vx_mean, double vy_mean,
         double vx_sigma, double vy_sigma,
         double theta);
+
+    /******************* Distance Breakage Probability Prediction Function *******************/
+    double getDistanceBreakTime(double vx_mean, double vy_mean,
+                                double vx_delta, double vy_delta,
+                                double x0, double y0,
+                                double R, double dt = 1, int loop = 100);
+
+    double getBreakTime(SimpleNode *dst);
+    double getBeamwidthFromCommRange(double commRange);
 
 protected:
 };

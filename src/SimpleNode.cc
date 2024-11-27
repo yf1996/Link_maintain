@@ -60,6 +60,8 @@ void SimpleNode::initialize(int stage)
         linkStateThreshold = par("linkStateThreshold");
 
         beamwidth = 2 * M_PI / numSectors;
+        commRangeIncr = 100;
+        rangeMultipleMax = par("rangeMultipleMax");
 
         WATCH(pos);
     }
@@ -93,17 +95,47 @@ void SimpleNode::initialize(int stage)
                 double breakTime;
                 auto dst = check_and_cast<SimpleNode *>(iter->first);
 
-                EV_INFO << "dst x pos: " << dst->mobility->getCurrentPosition().getX() << endl;
-                EV_INFO << "dst y pos: " << dst->mobility->getCurrentPosition().getY() << endl;
+                breakTime = getBreakTime(dst);
 
-                breakTime = getAngleBreakTime(dst->mobility->getSpeedXMean(),
-                                              dst->mobility->getSpeedYMean(),
-                                              dst->mobility->getSpeedXStdDev(),
-                                              dst->mobility->getSpeedYStdDev(),
-                                              dst->mobility->getCurrentPosition().getX(),
-                                              dst->mobility->getCurrentPosition().getY(),
-                                              beamwidth,
-                                              dst->mobility->getUpdateInterval());
+                // EV_INFO << "dst x pos: " << dst->mobility->getCurrentPosition().getX() << endl;
+                // EV_INFO << "dst y pos: " << dst->mobility->getCurrentPosition().getY() << endl;
+
+                // /* test */
+                // int rangeMultiple = 0;
+                // while (rangeMultiple < rangeMultipleMax)
+                // {
+                //     double newCommRange = (*neighborTable)[dst].length() + rangeMultiple * commRangeIncr;
+                //     double newBeamwidth = getBeamwidthFromCommRange(newCommRange);
+
+                //     double distanceBreakTime = getDistanceBreakTime(dst->mobility->getSpeedXMean(),
+                //                                                     dst->mobility->getSpeedYMean(),
+                //                                                     dst->mobility->getSpeedXStdDev(),
+                //                                                     dst->mobility->getSpeedYStdDev(),
+                //                                                     dst->mobility->getCurrentPosition().getX(),
+                //                                                     dst->mobility->getCurrentPosition().getY(),
+                //                                                     newCommRange,
+                //                                                     dst->mobility->getUpdateInterval());
+
+                //     EV_INFO << "test time is: " << distanceBreakTime << endl;
+                //     double angleBbreakTime = getAngleBreakTime(dst->mobility->getSpeedXMean(),
+                //                                                dst->mobility->getSpeedYMean(),
+                //                                                dst->mobility->getSpeedXStdDev(),
+                //                                                dst->mobility->getSpeedYStdDev(),
+                //                                                dst->mobility->getCurrentPosition().getX(),
+                //                                                dst->mobility->getCurrentPosition().getY(),
+                //                                                newBeamwidth,
+                //                                                dst->mobility->getUpdateInterval());
+
+                //     breakTime = distanceBreakTime; // Ensure that breakTime has a value when loop ends.
+                //     if (angleBbreakTime < distanceBreakTime)
+                //     {
+                //         breakTime = angleBbreakTime;
+                //         break;
+                //     }
+
+                //     rangeMultiple--;
+                // }
+
                 double nextTime = simTime().dbl() + breakTime;
                 EV_ERROR << nextTime << endl;
                 txSchedule.insert({nextTime, dst});
@@ -230,20 +262,31 @@ void SimpleNode::handleMessage(cMessage *msg)
              * If the prediction method is adopted, there will be some observation errors.
              */
 
+            /**
+             * TODO:
+             * 1. Change beamwidth.
+             * 2. Get distance break probability
+             * 3. Make angle break probability greater than distance break probability.
+             * 4. Refresh direction vector with new communication range and beamwidth.
+             */
+
             auto dir = check_and_cast<SimpleNode *>(maintainNode)->getPosition() - pos;
-            (*neighborTable)[maintainNode] = dir.normalize();
+            (*neighborTable)[maintainNode] = dir.normalize() * (*neighborTable)[maintainNode].length(); // new direction and old communication range.
 
             /* Set next refresh time. */
             double breakTime;
             auto dst = check_and_cast<SimpleNode *>(maintainNode);
-            breakTime = getAngleBreakTime(dst->mobility->getSpeedXMean(),
-                                          dst->mobility->getSpeedYMean(),
-                                          dst->mobility->getSpeedXStdDev(),
-                                          dst->mobility->getSpeedYStdDev(),
-                                          dst->mobility->getCurrentPosition().getX(),
-                                          dst->mobility->getCurrentPosition().getY(),
-                                          beamwidth,
-                                          dst->mobility->getUpdateInterval());
+
+            breakTime = getBreakTime(dst); // new communication range is already set in getBreakTime().
+
+            // breakTime = getAngleBreakTime(dst->mobility->getSpeedXMean(),
+            //                               dst->mobility->getSpeedYMean(),
+            //                               dst->mobility->getSpeedXStdDev(),
+            //                               dst->mobility->getSpeedYStdDev(),
+            //                               dst->mobility->getCurrentPosition().getX(),
+            //                               dst->mobility->getCurrentPosition().getY(),
+            //                               beamwidth,
+            //                               dst->mobility->getUpdateInterval());
             txSchedule.insert({simTime().dbl() + breakTime, dst});
 
             /* Perhaps new fresh time is the earliest. */
@@ -288,7 +331,6 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
         txSchedule.erase(txSchedule.begin());
 
         /* Still in neighbor table */
-        linkState[dst]--;
         emit(sendCountSignal, 1);
 
         /* send */
@@ -340,17 +382,18 @@ void SimpleNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject
 bool SimpleNode::canSendToNode(SimpleNode *dst)
 {
     auto dis_v = dst->getPosition() - pos;
-    auto ang = dis_v.angle((*neighborTable)[dst]);
+    auto directionVector = (*neighborTable)[dst];
+    auto ang = dis_v.angle(directionVector);
 
     EV_INFO << dst->getFullName() << endl;
-    EV_INFO << "normal vector is " << (*neighborTable)[dst] << endl;
+    EV_INFO << "normal vector is " << directionVector << endl;
     EV_INFO << "dis_v is " << dis_v << endl;
     EV_INFO << "dis_v normal is " << dis_v.normalize() << endl;
     EV_INFO << "ang is " << ang << endl;
     EV_INFO << "distance is " << pos.distance(dst->getPosition()) << endl;
 
     return ((ang < (beamwidth / 2)) &&
-            (pos.distance(dst->getPosition()) < commRange));
+            (pos.distance(dst->getPosition()) < directionVector.length()));
 }
 
 void SimpleNode::finish()
@@ -387,16 +430,14 @@ double SimpleNode::calculate_angle(const std::array<double, 2> &vec1, const std:
     double norm1 = std::sqrt(vec1[0] * vec1[0] + vec1[1] * vec1[1]);
     double norm2 = std::sqrt(vec2[0] * vec2[0] + vec2[1] * vec2[1]);
     double cos_theta = dot_product / (norm1 * norm2);
-    // cos_theta = std::clamp(cos_theta, -1.0, 1.0); // 闃叉娴偣璇樊瀵艰嚧瓒呭嚭 [-1, 1]
     return std::acos(cos_theta);
 }
 
 double SimpleNode::getAngleBreakTime(double vx_mean, double vy_mean,
                                      double vx_delta, double vy_delta,
                                      double x0, double y0,
-                                     double beamwidth, double dt, int loop)
+                                     double bw, double dt, int loop)
 {
-    std::vector<int> result;
     double simtime = 1000 * dt;
 
     /* * calculate relative speed
@@ -424,13 +465,7 @@ double SimpleNode::getAngleBreakTime(double vx_mean, double vy_mean,
 
     /* Rotate the coordinate system to ensure y0 is 0. */
     double rotationAngle = atan2(y0, x0);
-    // EV_INFO << "--------------------------------------------" << endl;
-    // EV_INFO << "rotationAngle " << rotationAngle << endl;
-    // EV_INFO << "rotationx0 " << x0 << endl;
-    // EV_INFO << "rotationy0 " << y0 << endl;
-
     auto [vx_mean_rotated, vy_mean_rotated, vx_delta_rotated, vy_delta_rotated] = rotateVelocity(vx_mean, vy_mean, vx_delta, vy_delta, rotationAngle);
-
     x0 = sqrt(x0 * x0 + y0 * y0);
     y0 = 0;
 
@@ -457,7 +492,7 @@ double SimpleNode::getAngleBreakTime(double vx_mean, double vy_mean,
             double ang = calculate_angle(n1Posi, {1, 0});
 
             // check angle
-            if (ang > beamwidth / 2.0)
+            if (ang > bw / 2.0)
             {
                 break;
             }
@@ -466,8 +501,6 @@ double SimpleNode::getAngleBreakTime(double vx_mean, double vy_mean,
             steps++;
         }
         sum += steps * 1.0;
-
-        // result.push_back(steps);
     }
 
     double mean = sum / loop;
@@ -499,4 +532,151 @@ std::tuple<double, double, double, double> SimpleNode::rotateVelocity(
 
     // Return the results
     return {vx_new_mean, vy_new_mean, vx_new_sigma, vy_new_sigma};
+}
+
+/******************* Distance Breakage Probability Prediction Function *******************/
+double SimpleNode::getDistanceBreakTime(double vx_mean, double vy_mean,
+                                        double vx_delta, double vy_delta,
+                                        double x0, double y0,
+                                        double R, double dt, int loop)
+{
+    double simtime = 1000 * dt;
+
+    int loopCnt = 10;
+    int minSteps = 10000;
+
+    /* * calculate relative speed
+     * Assume the velocities of nodes X and Y are random variables v_X and v_Y, respectively:
+     * - v_X ~ N(mu_X, sigma_X^2)
+     * - v_Y ~ N(mu_Y, sigma_Y^2)
+     * - v_X and v_Y are independent
+     *
+     * In the reference frame of node X, the velocity of node Y, v_Y|X, satisfies:
+     * - v_Y|X = v_Y - v_X
+     * - Mean: mu_Y|X = mu_Y - mu_X
+     * - Variance: sigma_Y|X^2 = sigma_Y^2 + sigma_X^2
+     *
+     * Therefore:
+     * v_Y|X ~ N(mu_Y - mu_X, sigma_Y^2 + sigma_X^2)
+     */
+    vx_mean = vx_mean - mobility->getSpeedXMean();
+    vy_mean = vy_mean - mobility->getSpeedYMean();
+
+    vx_delta = sqrt(vx_delta * vx_delta + mobility->getSpeedXStdDev() * mobility->getSpeedXStdDev());
+    vy_delta = sqrt(vy_delta * vy_delta + mobility->getSpeedYStdDev() * mobility->getSpeedYStdDev());
+
+    x0 = x0 - pos.getX();
+    y0 = y0 - pos.getY();
+
+    EV_INFO << "------------------------------------" << endl;
+    EV_INFO << "vx_mean:    " << vx_mean << endl;
+    EV_INFO << "vy_mean:    " << vy_mean << endl;
+    EV_INFO << "vx_delta:   " << vx_delta << endl;
+    EV_INFO << "vy_delta:   " << vy_delta << endl;
+    EV_INFO << "vx_mean:    " << vx_mean << endl;
+    EV_INFO << "x0:         " << x0 << endl;
+    EV_INFO << "y0:         " << y0 << endl;
+    EV_INFO << "R:          " << R << endl;
+    EV_INFO << "dt:         " << dt << endl;
+    EV_INFO << "loop:       " << loop << endl;
+
+    /* Rotate the coordinate system to ensure y0 is 0. */
+
+    double sum = 0.0;
+    for (int i = 0; i < loopCnt; i++)
+    {
+        for (int j = 0; j < loop; ++j)
+        {
+            int steps = 0;
+            double t = 0;
+            std::array<double, 2> n1Posi = {x0, y0};
+            std::array<double, 2> n2Posi = {0, 0};
+
+            while (t < simtime)
+            {
+                // Generate speed randomly
+                double v_x = normal(vx_mean, vx_delta);
+                double v_y = normal(vy_mean, vy_delta);
+
+                // update position
+                n1Posi[0] += v_x * dt;
+                n1Posi[1] += v_y * dt;
+
+                // calculate angle
+                double distance = sqrt(n1Posi[0] * n1Posi[0] + n1Posi[1] * n1Posi[1]);
+
+                // check angle
+                if (distance > R)
+                {
+                    break;
+                }
+
+                t += dt;
+                steps++;
+            }
+            minSteps = minSteps > steps ? steps : minSteps;
+        }
+        sum += minSteps * 1.0;
+    }
+    double mean = sum / loopCnt;
+    double nextTime = (mean)*dt;
+
+    return nextTime;
+}
+
+/******************* Breakage Probability Prediction Function *******************/
+double SimpleNode::getBreakTime(SimpleNode *dst)
+{
+    double breakTime;
+
+    EV_INFO << "dst x pos: " << dst->mobility->getCurrentPosition().getX() << endl;
+    EV_INFO << "dst y pos: " << dst->mobility->getCurrentPosition().getY() << endl;
+
+    int rangeMultiple = 0;
+    double newCommRange = 0;
+    while (rangeMultiple < rangeMultipleMax)
+    {
+        newCommRange = (*neighborTable)[dst].length() + rangeMultiple * commRangeIncr;
+        double newBeamwidth = getBeamwidthFromCommRange(newCommRange);
+        EV_INFO << "rangeMultiple is   " << rangeMultiple << endl;
+        double distanceBreakTime = getDistanceBreakTime(dst->mobility->getSpeedXMean(),
+                                                        dst->mobility->getSpeedYMean(),
+                                                        dst->mobility->getSpeedXStdDev(),
+                                                        dst->mobility->getSpeedYStdDev(),
+                                                        dst->mobility->getCurrentPosition().getX(),
+                                                        dst->mobility->getCurrentPosition().getY(),
+                                                        newCommRange,
+                                                        dst->mobility->getUpdateInterval());
+
+        EV_INFO << "distanceBreakTime is: " << distanceBreakTime << endl;
+        double angleBbreakTime = getAngleBreakTime(dst->mobility->getSpeedXMean(),
+                                                   dst->mobility->getSpeedYMean(),
+                                                   dst->mobility->getSpeedXStdDev(),
+                                                   dst->mobility->getSpeedYStdDev(),
+                                                   dst->mobility->getCurrentPosition().getX(),
+                                                   dst->mobility->getCurrentPosition().getY(),
+                                                   newBeamwidth,
+                                                   dst->mobility->getUpdateInterval());
+        EV_INFO << "angleBbreakTime is: " << angleBbreakTime << endl;
+        breakTime = distanceBreakTime; // Ensure that breakTime has a value when loop ends.
+        if (angleBbreakTime < distanceBreakTime)
+        {
+            breakTime = angleBbreakTime;
+            break;
+        }
+
+        rangeMultiple++;
+    }
+    (*neighborTable)[dst] = (*neighborTable)[dst].normalize() * newCommRange; // new communication range
+    return breakTime;
+}
+
+double SimpleNode::getBeamwidthFromCommRange(double newCommRange)
+{
+    double newBeamwidth = beamwidth / (newCommRange / commRange);
+    EV_INFO << "newCommRange:   " << newCommRange << endl;
+    EV_INFO << "commRange:      " << commRange << endl;
+    EV_INFO << "newBeamwidth:   " << newBeamwidth << endl;
+    EV_INFO << "beamwidth:      " << beamwidth << endl;
+    return newBeamwidth;
 }

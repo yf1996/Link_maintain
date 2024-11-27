@@ -109,12 +109,12 @@ void RadioMedium::refreshNeighborInfo()
             }
             auto dst = check_and_cast<SimpleNode *>(j);
             inet::Coord dir = dst->getPosition() - src->getPosition();
-            if (dir.length() > dst->getCommunicationRange())
+            if (dir.length() > src->getCommunicationRange())
             {
                 continue;
             }
 
-            subTable[j] = dir.normalize();
+            subTable[j] = dir.normalize() * src->getCommunicationRange();
         }
     }
     EV_INFO << nbrInfo;
@@ -180,17 +180,21 @@ void RadioMedium::handleMessage(cMessage *msg)
                         auto directionVector = nbrTableIter->second;
 
                         auto posVector = dst->getPosition() - src->getPosition();
-                        double ang = directionVector.normalize() == posVector.normalize() ? 0 : directionVector.angle(posVector);
+                        double ang = directionVector.getNormalized() == posVector.normalize() ? 0 : directionVector.angle(posVector);
                         double distance = posVector.length();
                         EV_INFO << "ang is " << ang << endl;
                         EV_INFO << "directionVector is " << directionVector << endl;
                         EV_INFO << "posVector is " << posVector / posVector.length() << endl;
+                        EV_INFO << "commRange:      " << directionVector.length() << endl;
+                        EV_INFO << "distance:      " << distance << endl;
 
                         nbrTableIter++;
-                        auto halfBw = src->getBeamwidth() / 2;
+
+                        /* Beamwidth varies with communication range. */
+                        auto halfBw = src->getBeamwidthFromCommRange(directionVector.length()) / 2;
                         EV_INFO << "halfBw is " << halfBw << endl;
 
-                        if (ang < halfBw && distance < src->getCommunicationRange())
+                        if (ang < halfBw && distance < directionVector.length())
                         {
                             onlineLinkNum++;
                         }
