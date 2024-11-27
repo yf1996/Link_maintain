@@ -41,7 +41,7 @@ protected:
     /**
      * @brief The infomation between all nodes.
      *
-     * nbrInfo = <nodeId, neighbor table<id of sector, neighbors set> >
+     * nbrInfo = <nodeId, neighbor table<id of neighbor, neighbor OrientVector> >
      */
     NbrMap nbrInfo;
 
@@ -51,6 +51,9 @@ protected:
     double constraintAreaMaxX;
     double constraintAreaMaxY;
     double constraintAreaMaxZ;
+
+    cMessage *monitorTimer = nullptr;
+    double monitorInterval = 0.0;
 
 public:
     static const double propagationSpeed;

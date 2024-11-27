@@ -61,7 +61,7 @@ private:
     // Fixed parameters
     int nodeId = -1;         // Unique ID for the node
     int numSectors = -1;     // Number of sectors for communication
-    double beamwidth = 0;    // unit:degree
+    double beamwidth = 0;    // unit:rad
     double commRange = -1.0; // Communication range of the node
                              // power comsumption parameters
     double transInterval = -1;
@@ -121,6 +121,12 @@ public:
     virtual int getNumSectors() const
     {
         return numSectors;
+    }
+
+    /** @brief Get the beamwidth. */
+    virtual double getBeamwidth() const
+    {
+        return beamwidth;
     }
 
     /**  @brief Get the communication range. */

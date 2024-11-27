@@ -66,6 +66,9 @@ void RadioMedium::initialize(int stage)
         constraintAreaMaxX = par("constraintAreaMaxX");
         constraintAreaMaxY = par("constraintAreaMaxY");
         constraintAreaMaxZ = par("constraintAreaMaxZ");
+
+        monitorTimer = new cMessage("Monitor Timer");
+        monitorInterval = 0.1;
     }
     else if (stage == INITSTAGE_MOBILITY)
     {
@@ -79,6 +82,8 @@ void RadioMedium::initialize(int stage)
         refreshNeighborInfo();
         emit(currentLinkNumSignal, GetCurrentLinkNum());
         emit(lostNodeSignal, GetCurrentNodeNum());
+
+        scheduleAfter(monitorInterval - 0.01, monitorTimer);
     }
     else if (stage == INITSTAGE_LAST)
     {
@@ -152,7 +157,73 @@ NbrTable *RadioMedium::getNeighborTable(cModule *src)
 void RadioMedium::handleMessage(cMessage *msg)
 {
     // TODO - Generated method body
-    throw cRuntimeError("Not Implemented");
+    if (msg == monitorTimer)
+    {
+        /* refresh link number. */
+        int onlineLinkNum = 0;
+        int onlineNodeNum = 0;
+        if (!nbrInfo.empty())
+        {
+            for (NbrMap::iterator nbrMapIter = nbrInfo.begin();
+                 nbrMapIter != nbrInfo.end();)
+            {
+                if (!nbrMapIter->second.empty())
+                {
+                    onlineNodeNum++;
+
+                    for (NbrTable::iterator nbrTableIter = nbrMapIter->second.begin();
+                         nbrTableIter != nbrMapIter->second.end();)
+                    {
+                        /* check if link vector is valid. */
+                        auto src = check_and_cast<SimpleNode *>(nbrMapIter->first);
+                        auto dst = check_and_cast<SimpleNode *>(nbrTableIter->first);
+                        auto directionVector = nbrTableIter->second;
+
+                        auto posVector = dst->getPosition() - src->getPosition();
+                        double ang = directionVector.normalize() == posVector.normalize() ? 0 : directionVector.angle(posVector);
+                        EV_INFO << "ang is " << ang << endl;
+                        EV_INFO << "directionVector is " << directionVector << endl;
+                        EV_INFO << "posVector is " << posVector / posVector.length() << endl;
+
+                        nbrTableIter++;
+                        auto halfBw = src->getBeamwidth() / 2;
+                        EV_INFO << "halfBw is " << halfBw << endl;
+
+                        if (ang < halfBw)
+                        {
+                            onlineLinkNum++;
+                        }
+                        else
+                        {
+                            EV_INFO << "earse(dst)" << endl;
+                            nbrMapIter->second.erase(dst);
+                        }
+                    }
+                }
+                else
+                {
+                    EV_ERROR << "nbrtable is empty. " << endl;
+                }
+
+                nbrMapIter++;
+            }
+        }
+        else
+        {
+            EV_ERROR << "nbrInfo is empty. " << endl;
+        }
+
+        // emit statistic signal
+        emit(currentLinkNumSignal, onlineLinkNum);
+        emit(lostNodeSignal, onlineNodeNum);
+
+        scheduleAfter(monitorInterval, monitorTimer); // periodic
+    }
+    else
+    {
+        /* code */
+        throw cRuntimeError("Not Implemented");
+    }
 }
 
 void RadioMedium::receiveSignal(cComponent *source, simsignal_t signalID, const SimTime &t, cObject *details)

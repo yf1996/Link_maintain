@@ -85,19 +85,7 @@ void SimpleNode::initialize(int stage)
         {
             EV_INFO << "---------Node " << nodeId << " Neighbor Table--------" << endl;
             EV_INFO << (*neighborTable);
-
-            /* Init link state. */
-            for (NbrTable::iterator iter = (*neighborTable).begin();
-                 iter != (*neighborTable).end();
-                 iter++)
-            {
-                linkState[iter->first] = linkStateThreshold;
-            }
-            EV_INFO << linkState << endl;
-            subscribe(linkEndSignal, radioMedium);
         }
-        // scheduleAfter(2, txTimer);
-        // subscribe(IMobility::mobilityStateChangedSignal, this);
     }
     else if (stage == 20)
     {
@@ -148,7 +136,7 @@ void SimpleNode::handleMessage(cMessage *msg)
             auto dst = check_and_cast<SimpleNode *>(iter->first);
             iter++;
             neighborTable->erase(dst);
-            radioMedium->linkLifetimeNotice(simTime());
+            // radioMedium->linkLifetimeNotice(simTime());
         }
 
         return;
@@ -199,7 +187,7 @@ void SimpleNode::handleMessage(cMessage *msg)
 
             /* Reset link state when received a ack. */
             auto maintainNode = const_cast<cModule *>(ackPkt->getSrc());
-            linkState[maintainNode] = linkStateThreshold;
+            // linkState[maintainNode] = linkStateThreshold;
 
             /**
              * Refresh the direction vector in the neighbor table.
@@ -246,23 +234,8 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
         {
             auto dst = check_and_cast<SimpleNode *>(iter->first);
 
-            /* change link state */
-            if (linkState[dst] < 0)
-            {
-                iter++;
-                linkState.erase(dst);
-                (*neighborTable).erase(dst);
-
-                radioMedium->linkLifetimeNotice(simTime());
-                continue;
-            }
-            else
-            {
-                iter++;
-                linkState[dst]--;
-                // statistic
-                emit(sendCountSignal, 1);
-            }
+            // statistic
+            emit(sendCountSignal, 1);
 
             if (canSendToNode(dst))
             {
@@ -280,20 +253,15 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
             /* cal energy consuming for sending a beacon. */
             currentPower = basePower + transmittingPower;
             consumption += beaconDuration.dbl() * currentPower;
+
+            iter++;
         }
 
         EV_INFO << "Map status after countdown." << endl;
         EV_INFO << (*neighborTable) << endl;
-        EV_INFO << linkState << endl;
+        // EV_INFO << linkState << endl;
 
-        if ((*neighborTable).empty())
-        {
-            // radioMedium->lostNodeNotice(this);
-        }
-        else
-        {
-            scheduleAfter(transInterval, txTimer);
-        }
+        scheduleAfter(transInterval, txTimer);
     }
 }
 
