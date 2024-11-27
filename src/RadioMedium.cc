@@ -181,6 +181,7 @@ void RadioMedium::handleMessage(cMessage *msg)
 
                         auto posVector = dst->getPosition() - src->getPosition();
                         double ang = directionVector.normalize() == posVector.normalize() ? 0 : directionVector.angle(posVector);
+                        double distance = posVector.length();
                         EV_INFO << "ang is " << ang << endl;
                         EV_INFO << "directionVector is " << directionVector << endl;
                         EV_INFO << "posVector is " << posVector / posVector.length() << endl;
@@ -189,7 +190,7 @@ void RadioMedium::handleMessage(cMessage *msg)
                         auto halfBw = src->getBeamwidth() / 2;
                         EV_INFO << "halfBw is " << halfBw << endl;
 
-                        if (ang < halfBw)
+                        if (ang < halfBw && distance < src->getCommunicationRange())
                         {
                             onlineLinkNum++;
                         }
