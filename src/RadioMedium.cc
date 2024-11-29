@@ -145,9 +145,8 @@ NbrTable *RadioMedium::getNeighborTable(cModule *src)
         return &nbrInfo[s];
     }
     else
-
     {
-        EV_INFO << "SimpleNode " << s->getId() << " is not in nbrInfo." << endl;
+        EV_ERROR << "SimpleNode " << s->getId() << " is not in nbrInfo." << endl;
         NbrTable blank;
         // return blank;
         return nullptr;
@@ -180,13 +179,17 @@ void RadioMedium::handleMessage(cMessage *msg)
                         auto directionVector = nbrTableIter->second;
 
                         auto posVector = dst->getPosition() - src->getPosition();
-                        double ang = directionVector.getNormalized() == posVector.normalize() ? 0 : directionVector.angle(posVector);
+                        double ang = directionVector.getNormalized() == posVector.getNormalized() ? 0 : directionVector.angle(posVector);
                         double distance = posVector.length();
-                        EV_INFO << "ang is " << ang << endl;
-                        EV_INFO << "directionVector is " << directionVector << endl;
-                        EV_INFO << "posVector is " << posVector / posVector.length() << endl;
-                        EV_INFO << "commRange:      " << directionVector.length() << endl;
-                        EV_INFO << "distance:      " << distance << endl;
+
+                        EV_INFO << "-----------------------------------------" << endl;
+                        EV_INFO << "src id is           "<< src->getFullName()<< endl;
+                        EV_INFO << "dst id is           "<< dst->getFullName()<< endl;
+                        EV_INFO << "ang is              " << ang << endl;
+                        EV_INFO << "directionVector is  " << directionVector << endl;
+                        EV_INFO << "posVector is        " << posVector / posVector.length() << endl;
+                        EV_INFO << "commRange:          " << directionVector.length() << endl;
+                        EV_INFO << "distance:           " << distance << endl;
 
                         nbrTableIter++;
 
@@ -200,7 +203,7 @@ void RadioMedium::handleMessage(cMessage *msg)
                         }
                         else
                         {
-                            EV_INFO << "earse(dst)" << endl;
+                            EV_ERROR << "earse(dst) dst is " << dst->getFullName() << endl;
                             nbrMapIter->second.erase(dst);
                         }
                     }

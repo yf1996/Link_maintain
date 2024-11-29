@@ -137,7 +137,6 @@ void SimpleNode::initialize(int stage)
                 // }
 
                 double nextTime = simTime().dbl() + breakTime;
-                EV_ERROR << nextTime << endl;
                 txSchedule.insert({nextTime, dst});
             }
         }
@@ -324,6 +323,7 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
         if ((*neighborTable).empty())
         {
             /* No neighbor in table. Stay alive for ack. */
+            EV_ERROR << "NeighborTable is empty." << endl;
             return;
         }
 
@@ -658,10 +658,10 @@ double SimpleNode::getBreakTime(SimpleNode *dst)
                                                    newBeamwidth,
                                                    dst->mobility->getUpdateInterval());
         EV_INFO << "angleBbreakTime is: " << angleBbreakTime << endl;
-        breakTime = distanceBreakTime; // Ensure that breakTime has a value when loop ends.
+        breakTime = distanceBreakTime == 0 ? 0.1 : distanceBreakTime; // Ensure that breakTime has a value when loop ends. 0.1 ensures that do not enter a infinite loop.
         if (angleBbreakTime < distanceBreakTime)
         {
-            breakTime = angleBbreakTime;
+            breakTime = angleBbreakTime > 0 ? angleBbreakTime : 0.1;
             break;
         }
 
@@ -674,9 +674,9 @@ double SimpleNode::getBreakTime(SimpleNode *dst)
 double SimpleNode::getBeamwidthFromCommRange(double newCommRange)
 {
     double newBeamwidth = beamwidth / (newCommRange / commRange);
-    EV_INFO << "newCommRange:   " << newCommRange << endl;
-    EV_INFO << "commRange:      " << commRange << endl;
-    EV_INFO << "newBeamwidth:   " << newBeamwidth << endl;
-    EV_INFO << "beamwidth:      " << beamwidth << endl;
+    // EV_INFO << "newCommRange:   " << newCommRange << endl;
+    // EV_INFO << "commRange:      " << commRange << endl;
+    // EV_INFO << "newBeamwidth:   " << newBeamwidth << endl;
+    // EV_INFO << "beamwidth:      " << beamwidth << endl;
     return newBeamwidth;
 }
