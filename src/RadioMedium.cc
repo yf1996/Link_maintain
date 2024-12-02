@@ -161,6 +161,9 @@ void RadioMedium::handleMessage(cMessage *msg)
         /* refresh link number. */
         int onlineLinkNum = 0;
         int onlineNodeNum = 0;
+
+        EV_INFO << nbrInfo << endl;
+
         if (!nbrInfo.empty())
         {
             for (NbrMap::iterator nbrMapIter = nbrInfo.begin();
@@ -183,8 +186,8 @@ void RadioMedium::handleMessage(cMessage *msg)
                         double distance = posVector.length();
 
                         EV_INFO << "-----------------------------------------" << endl;
-                        EV_INFO << "src id is           "<< src->getFullName()<< endl;
-                        EV_INFO << "dst id is           "<< dst->getFullName()<< endl;
+                        EV_INFO << "src id is           " << src->getFullName() << endl;
+                        EV_INFO << "dst id is           " << dst->getFullName() << endl;
                         EV_INFO << "ang is              " << ang << endl;
                         EV_INFO << "directionVector is  " << directionVector << endl;
                         EV_INFO << "posVector is        " << posVector / posVector.length() << endl;

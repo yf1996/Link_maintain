@@ -17,6 +17,9 @@
 
 #include "inet/mobility/base/MobilityBase.h"
 
+#include <algorithm>
+#include <numeric>
+
 using namespace omnetpp;
 
 Define_Module(SimpleNode);
@@ -330,27 +333,30 @@ void SimpleNode::handleSelfMessage(cMessage *msg)
         auto dst = check_and_cast<SimpleNode *>(txSchedule.begin()->second);
         txSchedule.erase(txSchedule.begin());
 
-        /* Still in neighbor table */
-        emit(sendCountSignal, 1);
-
-        /* send */
-        if (canSendToNode(dst))
+        if ((*neighborTable).find(dst) != (*neighborTable).end())
         {
-            Beacon *pkt = new Beacon("link maintain beacon");
-            pkt->setSrc(this);
-            pkt->setDst(dst);
-            pkt->setTimestamp(simTime());
-            sendDirect(pkt, dst->gate("in"));
-        }
-        else
-        {
-            EV_INFO << "cant send to node " << dst->getFullName() << endl;
-            txSchedule.insert({simTime().dbl() + 2.0, dst});
-        }
+            /* Still in neighbor table */
+            emit(sendCountSignal, 1);
 
-        /* cal energy consuming for sending a beacon. */
-        currentPower = basePower + transmittingPower;
-        consumption += beaconDuration.dbl() * currentPower;
+            /* send */
+            if (canSendToNode(dst))
+            {
+                Beacon *pkt = new Beacon("link maintain beacon");
+                pkt->setSrc(this);
+                pkt->setDst(dst);
+                pkt->setTimestamp(simTime());
+                sendDirect(pkt, dst->gate("in"));
+            }
+            else
+            {
+                EV_INFO << "cant send to node " << dst->getFullName() << endl;
+                txSchedule.insert({simTime().dbl() + 2.0, dst});
+            }
+
+            /* cal energy consuming for sending a beacon. */
+            currentPower = basePower + transmittingPower;
+            consumption += beaconDuration.dbl() * currentPower;
+        }
 
         if (!txSchedule.empty())
         {
@@ -383,6 +389,7 @@ bool SimpleNode::canSendToNode(SimpleNode *dst)
 {
     auto dis_v = dst->getPosition() - pos;
     auto directionVector = (*neighborTable)[dst];
+    EV << (*neighborTable) << endl;
     auto ang = dis_v.angle(directionVector);
 
     EV_INFO << dst->getFullName() << endl;
@@ -469,7 +476,7 @@ double SimpleNode::getAngleBreakTime(double vx_mean, double vy_mean,
     x0 = sqrt(x0 * x0 + y0 * y0);
     y0 = 0;
 
-    double sum = 0.0;
+    std::vector<int> result;
 
     for (int i = 0; i < loop; ++i)
     {
@@ -500,11 +507,16 @@ double SimpleNode::getAngleBreakTime(double vx_mean, double vy_mean,
             t += dt;
             steps++;
         }
-        sum += steps * 1.0;
+        result.push_back(steps);
     }
 
-    double mean = sum / loop;
-    double nextTime = (mean)*dt;
+    double sum = std::accumulate(std::begin(result), std::end(result), 0.0);
+    double mean = sum / result.size(); // 均值
+    auto minValue = std::min_element(result.begin(), result.end());
+    EV_INFO << "min value is    " << *minValue << endl;
+
+    // double nextTime = (mean)*dt;
+    double nextTime = (*minValue) * dt;
 
     return nextTime;
 }
@@ -633,7 +645,7 @@ double SimpleNode::getBreakTime(SimpleNode *dst)
     EV_INFO << "dst y pos: " << dst->mobility->getCurrentPosition().getY() << endl;
 
     int rangeMultiple = 0;
-    double newCommRange = 0;
+    double newCommRange = commRange;
     while (rangeMultiple < rangeMultipleMax)
     {
         newCommRange = (*neighborTable)[dst].length() + rangeMultiple * commRangeIncr;
