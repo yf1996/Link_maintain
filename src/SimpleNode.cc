@@ -48,6 +48,7 @@ void SimpleNode::initialize(int stage)
         batteryStorage = par("batteryStorage");
         transInterval = par("sendInterval");
         nominalVoltage = par("nominalVoltage");
+        isPred = par("isPred");
 
         /**
          * Energy(J) = Battery Capacity(mAh) / 1000 * Voltage(V) * 3600
@@ -640,6 +641,11 @@ double SimpleNode::getDistanceBreakTime(double vx_mean, double vy_mean,
 double SimpleNode::getBreakTime(SimpleNode *dst)
 {
     double breakTime;
+
+    if (!isPred)
+    {
+        return transInterval;
+    }
 
     EV_INFO << "dst x pos: " << dst->mobility->getCurrentPosition().getX() << endl;
     EV_INFO << "dst y pos: " << dst->mobility->getCurrentPosition().getY() << endl;

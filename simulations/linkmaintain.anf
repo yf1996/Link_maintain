@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <analysis version="2">
     <inputs>
-        <input pattern="results/LinkMaintain*.sca"/>
-        <input pattern="results/LinkMaintain-numSectors=*.vec"/>
+        <input pattern="results/*.sca"/>
+        <input pattern="results/*.vec"/>
     </inputs>
     <charts/>
 </analysis>

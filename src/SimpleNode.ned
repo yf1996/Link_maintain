@@ -41,6 +41,7 @@ module SimpleNode extends INode
         double sendInterval @unit(s) = default(2s);
         int linkStateThreshold = default(2);
         int rangeMultipleMax = default(2);
+        bool isPred = default(true);
     
         double listenningPower @unit(W) = default(0.5W);
         double receivingPower @unit(W) = default(2W);

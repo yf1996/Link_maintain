@@ -79,6 +79,7 @@ private:
     mAh batteryStorage = mAh(0.0);
     J batteryStorage_joule = J(0.0);
     double nominalVoltage = 0;
+    bool isPred = false;
 
     CountDown linkStateThreshold; // minus 1 when send. Reset when received ack.
 
