@@ -63,7 +63,7 @@ void SimpleNode::initialize(int stage)
         linkStateThreshold = par("linkStateThreshold");
 
         beamwidth = 2 * M_PI / numSectors;
-        commRangeIncr = 100;
+        commRangeIncr = 500;
         rangeMultipleMax = par("rangeMultipleMax");
 
         WATCH(pos);
@@ -644,11 +644,15 @@ double SimpleNode::getBreakTime(SimpleNode *dst)
     EV_INFO << "dst x pos: " << dst->mobility->getCurrentPosition().getX() << endl;
     EV_INFO << "dst y pos: " << dst->mobility->getCurrentPosition().getY() << endl;
 
-    int rangeMultiple = 0;
+    // int rangeMultiple = 0;
+    int rangeMultiple = ((*neighborTable)[dst].length() - commRange) / commRangeIncr;
+    rangeMultiple = rangeMultiple < rangeMultipleMax ? rangeMultiple : (rangeMultipleMax - 1);
+    EV_INFO << "rangeMultiple = " << rangeMultiple << endl;
     double newCommRange = commRange;
     while (rangeMultiple < rangeMultipleMax)
     {
-        newCommRange = (*neighborTable)[dst].length() + rangeMultiple * commRangeIncr;
+        // newCommRange = (*neighborTable)[dst].length() + rangeMultiple * commRangeIncr;
+        newCommRange = commRange + rangeMultiple * commRangeIncr;
         double newBeamwidth = getBeamwidthFromCommRange(newCommRange);
         EV_INFO << "rangeMultiple is   " << rangeMultiple << endl;
         double distanceBreakTime = getDistanceBreakTime(dst->mobility->getSpeedXMean(),

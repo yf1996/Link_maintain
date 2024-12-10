@@ -68,12 +68,12 @@ def exportToCsv(measurement_name, numSectors, rangeMultipleMax):
 
 
 if __name__ == "__main__":
-    numSectors = [8, 10, 12]  # 8 10 12
-    # numSectors = [10]  # 8 10 12
+    # numSectors = [8, 10, 12]  # 8 10 12
+    numSectors = [8]  # 8 10 12
     # rangeMultipleMax diff
-    rangeMultipleMaxs = [1, 4, 7, 10]
-    rangeMultipleMaxs = [1]
-    measurement_name = "CurrentLinkNum"
+    rangeMultipleMaxs = [1, 2, 3, 4, 5, 6]
+    # rangeMultipleMaxs = [1]
+    measurement_name = "LostNodeNum"  # "LostNodeNum"
 
     ax = plt.subplot()
     # export data
