@@ -2,3 +2,5 @@ out
 simulations/results
 simulations/results_csv
 **/*.exe
+**/__pycache__
+**/fig
