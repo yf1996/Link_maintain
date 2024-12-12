@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import subprocess
 import matplotlib.pyplot as plt
+import common_func
 
 
 # collect parameters for query
@@ -81,6 +82,8 @@ def vecExportToNp(measurement_name, runattr_map):
     timeAxis = df.iloc[:, 0].values
     data_rep = df.iloc[:, 1:-1:2].values
     data_avg = np.mean(data_rep, axis=1)
+    timeAxis, data_avg = common_func.remove_duplicates(timeAxis, data_avg)
+
     return [timeAxis, data_avg]
 
 

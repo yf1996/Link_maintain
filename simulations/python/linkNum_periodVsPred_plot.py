@@ -12,6 +12,8 @@ xlabel: numSectors---8, 10, 12
 data for per label: no-pred (PLM method) in sendInterval period=1,3,5 pred in rangeMax 1,5,9
 """
 colors = ["#F4A300", "#1976D2", "#7B1FA2", "#0288D1", "#D32F2F", "#388E3C"]
+colors = ["#CC6666", "#D9A656", "#678FCB", "#D28A8A", "#E6B96A", "#7EA8CF"]
+
 
 secotrs = [8, 10, 12]
 fig, ax = plt.subplots(figsize=(8, 6))
@@ -32,6 +34,7 @@ for i, sendInterval in enumerate(sendIntervals):
     ax.plot(
         timeaxis,
         data_avg,
+        linestyle="--",
         color=colors[i],
         label=f"PLM method, Period={sendInterval}",
     )
@@ -89,6 +92,7 @@ for i, sendInterval in enumerate(sendIntervals):
     zoom_ax.plot(
         timeaxis,
         data_avg,
+        linestyle="--",
         color=colors[i],
         label=f"PLM method, Period={sendInterval}",
     )
@@ -117,6 +121,7 @@ for i, rangeMultipleMax in enumerate(rangeMultipleMaxs):
 # 设置子图的坐标范围与标题
 zoom_ax.set_xlim(x_min, x_max)
 zoom_ax.set_ylim(y_min, y_max)
+zoom_ax.grid(True, linewidth=0.5, linestyle="-.")
 # 添加箭头连接主图的放大区域与子图
 # 箭头1：右上角 -> 左上角
 con1 = ConnectionPatch(
@@ -163,6 +168,7 @@ for handle, label in zip(handles, labels):
         unique_labels.append(label)
         unique_handles.append(handle)
 plt.legend(unique_handles, unique_labels, loc="upper right")
+plt.grid(True, linewidth=0.5, linestyle="-.")
 
 
 # plt.tight_layout()

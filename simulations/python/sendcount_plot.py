@@ -10,8 +10,10 @@ xlabel: numSectors---8, 10, 12
 data for per label: no-pred (PLM method) in sendInterval period=1,3,5 pred in rangeMax 1,5,9
 """
 # 定义莫兰迪色系的六个颜色（Hex色码）
-colors = ['#F4A300', '#1976D2', '#7B1FA2', '#0288D1', '#D32F2F', '#388E3C']
-secotrs = [8, 12]
+colors = ["#F4A300", "#1976D2", "#7B1FA2", "#0288D1", "#D32F2F", "#388E3C"]
+colors = ["#B27D7D", "#C9B28B", "#8B9EB7", "#C1A1A1", "#D8C8A0", "#A1B3C1"]
+
+secotrs = [8, 10, 12]
 width = 0.2
 fig = plt.figure(figsize=(8, 6))
 ax = plt.subplot()
@@ -37,11 +39,6 @@ for sector in secotrs:
         runattr_map["sendInterval"] = str(sendInterval)
         runattr_map["numSectors"] = str(sector)
         data_avg = scalarplot.scaExportToNp(name, runattr_map)
-        # get link life time
-        _, linkLifetimeAvg = vectorplot.vecExportToNp(
-            "CurrentLinkNum:vector", runattr_map
-        )
-        timeavg = np.mean(linkLifetimeAvg)
         ax.bar(
             xlabel[xlabel_index],
             data_avg,
@@ -64,10 +61,6 @@ for sector in secotrs:
         runattr_map["rangeMultipleMax"] = str(rangeMultipleMax)
         runattr_map["numSectors"] = str(sector)
         data_avg = scalarplot.scaExportToNp(name, runattr_map)
-        _, linkLifetimeAvg = vectorplot.vecExportToNp(
-            "CurrentLinkNum:vector", runattr_map
-        )
-        timeavg = np.mean(linkLifetimeAvg)
         ax.bar(
             xlabel[xlabel_index],
             data_avg,
@@ -95,9 +88,10 @@ for handle, label in zip(handles, labels):
 plt.legend(unique_handles, unique_labels, loc="upper right", handlelength=2)
 # ax.legend()
 ax.set_xlim([7, 13])
-# ax.set_ylim([0, 1])
+ax.set_ylim([0, 2000])
 ax.set_xticks([8, 10, 12])
 ax.set_xticklabels([r"$BW=45 \degree$", r"$BW=36 \degree$", r"$BW=30 \degree$"])
+plt.grid(True, axis="y", linewidth=0.5, linestyle="-.")
 plt.savefig("./simulations/python/fig/overhead.pdf", dpi=350)
 # plt.tight_layout()
 plt.show()

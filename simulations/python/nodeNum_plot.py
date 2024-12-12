@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import ConnectionPatch
+import common_func
 
 
 import scalarplot
@@ -11,6 +12,7 @@ import vectorplot
 xlabel: numSectors---8, 10, 12
 data for per label: no-pred (PLM method) in sendInterval period=1,3,5 pred in rangeMax 1,5,9
 """
+colors = ["#CC6666", "#D9A656", "#678FCB", "#D28A8A", "#E6B96A", "#7EA8CF"]
 
 
 secotrs = [8, 10, 12]
@@ -26,12 +28,14 @@ runattr_map = {
     "numNode": "30",
     "numSectors": "8",
 }
-for sendInterval in sendIntervals:
+for i, sendInterval in enumerate(sendIntervals):
     runattr_map["sendInterval"] = str(sendInterval)
     timeaxis, data_avg = vectorplot.vecExportToNp(name, runattr_map)
     ax.plot(
         timeaxis,
         data_avg,
+        linestyle="--",
+        color=colors[i],
         label=f"PLM method, Period={sendInterval}",
     )
 
@@ -43,18 +47,19 @@ runattr_map = {
     "numSectors": "8",
 }
 rangeMultipleMaxs = [1, 5, 9]
-for rangeMultipleMax in rangeMultipleMaxs:
+for i, rangeMultipleMax in enumerate(rangeMultipleMaxs):
     runattr_map["rangeMultipleMax"] = str(rangeMultipleMax)
     timeaxis, data_avg = vectorplot.vecExportToNp(name, runattr_map)
     ax.plot(
         timeaxis,
         data_avg,
+        color=colors[i + 3],
         marker="^",
         markersize=7,
-        markevery=400,
+        markevery=int(len(data_avg) / 500),
         label=f"ALBP-D method, L={rangeMultipleMax}",
     )
-'''
+"""
 # 定义局部放大的区域
 x_min, x_max = 40, 60
 y_min, y_max = 10, 20
@@ -141,13 +146,13 @@ con2 = ConnectionPatch(
 fig.add_artist(con1)
 fig.add_artist(con2)
 
-'''
+"""
 # 显示图形
 
 ax.set_xlabel("Time / s")
 ax.set_ylabel("Number of Node")
 ax.set_xlim([0, 1200])
 ax.legend()
-# plt.tight_layout()
+plt.grid(True, linewidth=0.5, linestyle="-.")
 plt.savefig("./simulations/python/fig/numNode.pdf", dpi=350)
 plt.show()
